@@ -3,10 +3,13 @@
 .*.o.cmd
 .*.ko.cmd
 .tmp_versions/
-Module.symvers
-modules.order
+.*Module.symvers
+.*Module.symvers.cmd
+.*modules.order
+.*modules.order.cmd
 *.ko
 *.mod.c
 GPATH
 GRTAGS
 GTAGS
+make.log
