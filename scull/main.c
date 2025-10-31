@@ -28,7 +28,7 @@
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
 
-#include <asm/system.h>		/* cli(), *_flags */
+//[kods]since there is no such header file.  #include <asm/system.h>		/* cli(), *_flags */
 #include <asm/uaccess.h>	/* copy_*_user */
 
 #include "scull.h"		/* local definitions */
@@ -52,7 +52,7 @@ module_param(scull_qset, int, S_IRUGO);
 MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet");
 MODULE_LICENSE("Dual BSD/GPL");
 
-struct scull_dev *scull_devices;	/* allocated in scull_init_module */
+struct scull_dev *scull_devices;	/* allocated in scull_init_module [kods]this variable point the array of scull_dev structure*/
 
 
 /*
@@ -64,20 +64,21 @@ int scull_trim(struct scull_dev *dev)
 	struct scull_qset *next, *dptr;
 	int qset = dev->qset;   /* "dev" is not-null */
 	int i;
-
+        //[kods] loop for scull_qset instances 
 	for (dptr = dev->data; dptr; dptr = next) { /* all the list items */
 		if (dptr->data) {
+			//[kods] loop for **data field which is the array of general address in scull_qset structure. **data variable can be accessed by data[i] because **data is the array of address whose size can be 32 or 64 bits long depending on the cpu archetecture.
 			for (i = 0; i < qset; i++)
 				kfree(dptr->data[i]);
 			kfree(dptr->data);
 			dptr->data = NULL;
 		}
 		next = dptr->next;
-		kfree(dptr);
+		kfree(dptr);//[kods]because of const keyword in front of a parameter of kfree function, kfree dosen't make dptr pointer into null value, ensuring outer for loop termination condition is not always false.
 	}
 	dev->size = 0;
-	dev->quantum = scull_quantum;
-	dev->qset = scull_qset;
+	dev->quantum = scull_quantum;//[kods] it is fixed value of 4000
+	dev->qset = scull_qset;//[kods] it is fixed value of 1000
 	dev->data = NULL;
 	return 0;
 }
@@ -97,14 +98,18 @@ int scull_read_procmem(char *buf, char **start, off_t offset,
 		struct scull_qset *qs = d->data;
 		if (down_interruptible(&d->sem))
 			return -ERESTARTSYS;
+		//[kods]for each scull_qset structure, by sprintf function, writing the string made out of parameters from 2nd argument to last one into buf+len location.
 		len += sprintf(buf+len,"\nDevice %i: qset %i, q %i, sz %li\n",
 				i, d->qset, d->quantum, d->size);
+		//[kods]this loop is for each cull_qset structure
 		for (; qs && len <= limit; qs = qs->next) { /* scan the list */
 			len += sprintf(buf + len, "  item at %p, qset at %p\n",
 					qs, qs->data);
 			if (qs->data && !qs->next) /* dump only the last item */
+				//[kods]this loop is for every quantums pointed by data field of a scull_qset structure.
 				for (j = 0; j < d->qset; j++) {
 					if (qs->data[j])
+						//[kods]adding entire data of a quantum to print proc file
 						len += sprintf(buf + len,
 								"    % 4i: %8p\n",
 								j, qs->data[j]);
@@ -115,7 +120,6 @@ int scull_read_procmem(char *buf, char **start, off_t offset,
 	*eof = 1;
 	return len;
 }
-
 
 /*
  * For now, the seq_file implementation will exist in parallel.  The
@@ -157,13 +161,13 @@ static int scull_seq_show(struct seq_file *s, void *v)
 	seq_printf(s, "\nDevice %i: qset %i, q %i, sz %li\n",
 			(int) (dev - scull_devices), dev->qset,
 			dev->quantum, dev->size);
-	for (d = dev->data; d; d = d->next) { /* scan the list */
+	for (d = dev->data; d; d = d->next) { /* scan the list [kods]scall_qset*/
 		seq_printf(s, "  item at %p, qset at %p\n", d, d->data);
 		if (d->data && !d->next) /* dump only the last item */
 			for (i = 0; i < dev->qset; i++) {
 				if (d->data[i])
 					seq_printf(s, "    % 4i: %8p\n",
-							i, d->data[i]);
+							i, d->data[i]); //[kods]printing only address located in data[i]
 			}
 	}
 	up(&dev->sem);
@@ -192,14 +196,21 @@ static int scull_proc_open(struct inode *inode, struct file *file)
 /*
  * Create a set of file operations for our proc file.
  */
-static struct file_operations scull_proc_ops = {
-	.owner   = THIS_MODULE,
-	.open    = scull_proc_open,
-	.read    = seq_read,
-	.llseek  = seq_lseek,
-	.release = seq_release
+//[kods]since proc_create function takes proc_ops structure rather than file_operations, I changed to use proc_ops structure.
+//static struct file_operations scull_proc_ops = {
+//	.owner   = THIS_MODULE,
+//	.open    = scull_proc_open,
+//	.read    = seq_read,
+//	.llseek  = seq_lseek,
+//	.release = seq_release
+//};
+
+static struct proc_ops scull_proc_ops = {
+	.proc_open    = scull_proc_open,
+	.proc_read    = seq_read,
+	.proc_lseek  = seq_lseek,
+	.proc_release = seq_release
 };
-	
 
 /*
  * Actually create (and remove) the /proc file(s).
@@ -207,13 +218,22 @@ static struct file_operations scull_proc_ops = {
 
 static void scull_create_proc(void)
 {
+        PDEBUG("scull_create_proc function is called with SCULL_DBUG enabled");
 	struct proc_dir_entry *entry;
-	create_proc_read_entry("scullmem", 0 /* default mode */,
-			NULL /* parent dir */, scull_read_procmem,
-			NULL /* client data */);
-	entry = create_proc_entry("scullseq", 0, NULL);
-	if (entry)
-		entry->proc_fops = &scull_proc_ops;
+	//[kods]create_proc_read_entry function seems deprecated and I cannot find definition of it in 6.16.0-rc4 kernel source.
+	//[kods]according to below web site, we have to replace create_proc_read_entry with proc_create. And that is the case create_proc_entry further below function.
+	//https://lkml.org/lkml/2013/4/11/215
+	//create_proc_read_entry("scullmem", 0 /* default mode */,
+	//		NULL /* parent dir */, scull_read_procmem,
+	//		NULL /* client data */);
+	//entry = create_proc_entry("scullseq", 0, NULL);
+	entry = proc_create("scullseq", 0, NULL, &scull_proc_ops);
+
+	//[kods]since there is no proc_fops fields in proc_dir_entry structure, I changed to output error message in stead of setting scull_proc_ops
+	//if (entry)
+		//entry->proc_fops = &scull_proc_ops;
+	if (!entry)
+		printk(KERN_ERR "scull: failed calling proc_create function");
 }
 
 static void scull_remove_proc(void)
@@ -256,14 +276,15 @@ int scull_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 /*
- * Follow the list
+ * Follow the list [kods]if scull_qset dosen't exist it creates scull_qset instances. 
+ * Otherwise it just follow the list returning the address of last element of scull_qset linked list.
  */
 struct scull_qset *scull_follow(struct scull_dev *dev, int n)
 {
 	struct scull_qset *qs = dev->data;
 
         /* Allocate first qset explicitly if need be */
-	if (! qs) {
+	if (! qs) { //[kods]if *scull_qset is not null pointer
 		qs = dev->data = kmalloc(sizeof(struct scull_qset), GFP_KERNEL);
 		if (qs == NULL)
 			return NULL;  /* Never mind */
@@ -287,28 +308,31 @@ struct scull_qset *scull_follow(struct scull_dev *dev, int n)
 /*
  * Data management: read and write
  */
-
 ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-	struct scull_dev *dev = filp->private_data; 
-	struct scull_qset *dptr;	/* the first listitem */
-	int quantum = dev->quantum, qset = dev->qset;
-	int itemsize = quantum * qset; /* how many bytes in the listitem */
+	struct scull_dev *dev = filp->private_data; //[kods]file structure is defined in ~/git/kernels/staging/include/linux/fs.h
+	struct scull_qset *dptr;	/* the first listitem [kods]this is as in Figure3-1 in page 61*/
+	int quantum = dev->quantum;
+        int qset = dev->qset;
+	int itemsize = quantum * qset; /* how many bytes in the listitem [kods]byte size of multiple Quantums pointed by a given scull_qset entry. */
 	int item, s_pos, q_pos, rest;
 	ssize_t retval = 0;
 
 	if (down_interruptible(&dev->sem))
 		return -ERESTARTSYS;
-	if (*f_pos >= dev->size)
+	if (*f_pos >= dev->size) //[kods]dev->size is entire bytes stored in Quantums in scull_qsets indicating scull_read read entire Quantum bytes. f_pos must strted from 0 or 1 rather than relative position of bytes.
 		goto out;
+	//[kods]f_pos is the position while manupilating Quantums pointed by a given scull_qset. Below code is since manipulation of given Quantums can be done upto its quantums size and if f_pos is specified more than that size, scull change count value so that the manupulation will never be done on more than that size. And this means that scull_read function might be called several times until f_pos reachs dev->size.
 	if (*f_pos + count > dev->size)
 		count = dev->size - *f_pos;
 
 	/* find listitem, qset index, and offset in the quantum */
-	item = (long)*f_pos / itemsize;
-	rest = (long)*f_pos % itemsize;
-	s_pos = rest / quantum; q_pos = rest % quantum;
+	//[kods] since parameter *f_pos is pointer variable, here it is dereferenced for its value.
+	item = (long)*f_pos / itemsize; //[kods] item holds the index of scull_qset. And such index starts from 0.
+	rest = (long)*f_pos % itemsize; //[kods] how many remaining bytes in the starting scull_qset which this function have to read.
+	s_pos = rest / quantum; //[kods]index of quantum in a given scull_qset for f_pos read-starting-point.
+	q_pos = rest % quantum; //[kods]starting byte in a given quantum in a given scull_qset for f_pos read_starting-point.
 
 	/* follow the list up to the right position (defined elsewhere) */
 	dptr = scull_follow(dev, item);
@@ -316,7 +340,7 @@ ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
 	if (dptr == NULL || !dptr->data || ! dptr->data[s_pos])
 		goto out; /* don't fill holes */
 
-	/* read only up to the end of this quantum */
+	/* read only up to the end of this quantum [kods] while f_pos can specify read-starting-byte in any scull_qset and quantum, actual reading have to be within the sread-starting quantum */
 	if (count > quantum - q_pos)
 		count = quantum - q_pos;
 
@@ -346,9 +370,10 @@ ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
 		return -ERESTARTSYS;
 
 	/* find listitem, qset index and offset in the quantum */
-	item = (long)*f_pos / itemsize;
+	item = (long)*f_pos / itemsize;//[kods]item variable represent which number of scull_qset is the writing-starting-scull_qset
 	rest = (long)*f_pos % itemsize;
-	s_pos = rest / quantum; q_pos = rest % quantum;
+	s_pos = rest / quantum;//[kods]s_pos indicates which quantum has the writing-starting-byte
+       	q_pos = rest % quantum;//[kods]q_pos indicates which specific byte in a given quantum is the writing-starting-byte.
 
 	/* follow the list up to the right position */
 	dptr = scull_follow(dev, item);
@@ -409,9 +434,12 @@ long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	 * "write" is reversed
 	 */
 	if (_IOC_DIR(cmd) & _IOC_READ)
-		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+		err = !access_ok((void __user *)arg, _IOC_SIZE(cmd));
+		//[kods]since access_ok takes only two arguments, I deleted first argument VERIFY_WRITE.
+		//err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
 	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+		err =  !access_ok((void __user *)arg, _IOC_SIZE(cmd));
+		//err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
 	if (err) return -EFAULT;
 
 	switch(cmd) {
@@ -496,14 +524,14 @@ long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
          * The scullpipe device uses this same ioctl method, just to
          * write less code. Actually, it's the same driver, isn't it?
          */
-
+/*
 	  case SCULL_P_IOCTSIZE:
 		scull_p_buffer = arg;
 		break;
 
 	  case SCULL_P_IOCQSIZE:
 		return scull_p_buffer;
-
+*/
 
 	  default:  /* redundant, as cmd was checked against MAXNR */
 		return -ENOTTY;
@@ -587,8 +615,8 @@ void scull_cleanup_module(void)
 	unregister_chrdev_region(devno, scull_nr_devs);
 
 	/* and call the cleanup functions for friend devices */
-	scull_p_cleanup();
-	scull_access_cleanup();
+	//scull_p_cleanup();
+	//scull_access_cleanup();
 
 }
 
@@ -598,12 +626,16 @@ void scull_cleanup_module(void)
  */
 static void scull_setup_cdev(struct scull_dev *dev, int index)
 {
-	int err, devno = MKDEV(scull_major, scull_minor + index);
+	int err;
+	//[kods]scull_major is dynamically allocated mojor device number by alloc_chrdev_region function in scull_init module function.
+        int devno = MKDEV(scull_major, scull_minor + index);
     
-	cdev_init(&dev->cdev, &scull_fops);
+	//[kods]this function is defined in kernel source of char_dev.c
+	//[kods]scull_fops below is statically created structure including function pointer of scull_read and scull_write and so on.
+	cdev_init(&dev->cdev, &scull_fops); //[kods]cdev_init function may initialize cdev structure, particulary for initializing kobject located in cdev's field.
 	dev->cdev.owner = THIS_MODULE;
 	dev->cdev.ops = &scull_fops;
-	err = cdev_add (&dev->cdev, devno, 1);
+	err = cdev_add(&dev->cdev, devno, 1);
 	/* Fail gracefully if need be */
 	if (err)
 		printk(KERN_NOTICE "Error %d adding scull%d", err, index);
@@ -623,9 +655,11 @@ int scull_init_module(void)
 		dev = MKDEV(scull_major, scull_minor);
 		result = register_chrdev_region(dev, scull_nr_devs, "scull");
 	} else {
-		result = alloc_chrdev_region(&dev, scull_minor, scull_nr_devs,
+		//[kods]dynamically allocating major device numbe by this function. second parameter is named baseminor in fs/char_dev.c, meaning minor number will be consective starting baseminor upto baseminor plus third parameter count.
+		result = alloc_chrdev_region(&dev, scull_minor, scull_nr_devs, 
 				"scull");
-		scull_major = MAJOR(dev);
+		scull_major = MAJOR(dev); //[kods]this is global variable.
+		printk(KERN_INFO "scull: dynamically allocated major number is %d\n", scull_major);
 	}
 	if (result < 0) {
 		printk(KERN_WARNING "scull: can't get major %d\n", scull_major);
@@ -647,14 +681,16 @@ int scull_init_module(void)
 	for (i = 0; i < scull_nr_devs; i++) {
 		scull_devices[i].quantum = scull_quantum;
 		scull_devices[i].qset = scull_qset;
-		init_MUTEX(&scull_devices[i].sem);
+		//init_MUTEX(&scull_devices[i].sem);
+		sema_init(&scull_devices[i].sem, 1);//[kods]since there is no init_MUTEX function in kernel source, I replaced it with mutex_init(&scull_devices[i].mutex) function in kernel 6.16.xx by following web site https://stackoverflow.com/questions/27801529/where-has-init-mutex-gone-in-linux-kernel-version-3-2. However it requires mutex rather than semaphore as a argument. other web site recomended to use sma_init function so I followed that one.
 		scull_setup_cdev(&scull_devices[i], i);
 	}
 
         /* At this point call the init function for any friend device */
 	dev = MKDEV(scull_major, scull_minor + scull_nr_devs);
-	dev += scull_p_init(dev);
-	dev += scull_access_init(dev);
+	//[kods]in order to avoid compile error message related to pipe.c and access.c, I comment out scull_p_init
+	//dev += scull_p_init(dev);
+	//dev += scull_access_init(dev);
 
 #ifdef SCULL_DEBUG /* only when debugging */
 	scull_create_proc();

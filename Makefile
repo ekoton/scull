@@ -2,9 +2,11 @@
 #SUBDIRS =  misc-progs misc-modules \
 #           skull scull scullc sculld scullp scullv sbull snull\
 #	   short shortprint pci simple usb tty lddbus
-SUBDIRS =  misc-progs misc-modules \
-           skull scull scullc lddbus sculld scullp scullv sbull \
-           short shortprint simple
+#SUBDIRS =  misc-progs misc-modules \
+#           skull scull scullc lddbus sculld scullp scullv sbull \
+#           short shortprint simple
+#[kods]for compiling scull without error
+SUBDIRS =  scull
 
 all: subdirs
 

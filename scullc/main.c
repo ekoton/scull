@@ -50,6 +50,13 @@ void scullc_cleanup(void);
 /* declare one cache pointer: use it for all devices */
 struct kmem_cache *scullc_cache;
 
+//[kods]to solve compile error due to calling old aio_complete function, I added below
+/* Add this near the top of scull source files that use aio_complete */
+static inline void aio_complete(struct kiocb *iocb, long res, long res2)
+{
+    if (iocb->ki_complete)
+        iocb->ki_complete(iocb, res);
+}
 
 #ifdef SCULLC_USE_PROC /* don't waste space if unused */
 /*
@@ -285,9 +292,9 @@ long scullc_ioctl (struct file *filp,
 	 * "write" is reversed
 	 */
 	if (_IOC_DIR(cmd) & _IOC_READ)
-		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+		err = !access_ok((void __user *)arg, _IOC_SIZE(cmd));
 	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+		err =  !access_ok((void __user *)arg, _IOC_SIZE(cmd));
 	if (err)
 		return -EFAULT;
 

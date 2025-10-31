@@ -302,6 +302,31 @@ static int scull_read_p_mem(char *buf, char **start, off_t offset, int count,
 	return len;
 }
 
+/*
+ * Tie the sequence operators up.
+ */
+static struct seq_operations scull_seq_ops = {
+	.start = scull_seq_start,
+	.next  = scull_seq_next,
+	.stop  = scull_seq_stop,
+	.show  = scull_seq_show
+};
+
+/*
+ * Now to implement the /proc file we need only make an open
+ * method which sets up the sequence operators.
+ */
+static int scull_proc_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &seq_operations);
+}
+
+static struct proc_ops scull_proc_ops = {
+	.proc_open    = scull_proc_open,
+	.proc_read    = seq_read,
+	.proc_lseek  = seq_lseek,
+	.proc_release = seq_release
+};
 
 #endif
 
@@ -313,7 +338,8 @@ static int scull_read_p_mem(char *buf, char **start, off_t offset, int count,
  */
 struct file_operations scull_pipe_fops = {
 	.owner =	THIS_MODULE,
-	.llseek =	no_llseek,
+	//.llseek =	no_llseek, 
+	.llseek =	noop_llseek, //[kods]changed from no_llseek to noop_llseek in accordance with compiller error message.
 	.read =		scull_p_read,
 	.write =	scull_p_write,
 	.poll =		scull_p_poll,
@@ -363,11 +389,14 @@ int scull_p_init(dev_t firstdev)
 	for (i = 0; i < scull_p_nr_devs; i++) {
 		init_waitqueue_head(&(scull_p_devices[i].inq));
 		init_waitqueue_head(&(scull_p_devices[i].outq));
-		init_MUTEX(&scull_p_devices[i].sem);
+		//init_MUTEX(&scull_p_devices[i].sem);
+		sema_init(&scull_p_devices[i].sem, 1);//[kods]since there is no init_MUTEX function in kernel source, I replaced it with mutex_init(&scull_devices[i].mutex) function in kernel 6.16.xx by following web site https://stackoverflow.com/questions/27801529/where-has-init-mutex-gone-in-linux-kernel-version-3-2. However it requires mutex rather than semaphore as a argument. I decided to use sma_init function.
 		scull_p_setup_cdev(scull_p_devices + i, i);
 	}
 #ifdef SCULL_DEBUG
-	create_proc_read_entry("scullpipe", 0, NULL, scull_read_p_mem, NULL);
+	//[kods]create_proc_read_entry function seems deprecated and I cannot find definition of it in 6.16.0-rc4 kernel source.
+	//create_proc_read_entry("scullpipe", 0, NULL, scull_read_p_mem, NULL);
+	entry = proc_create("scullpipe", 0, NULL, &scull_proc_ops);
 #endif
 	return scull_p_nr_devs;
 }

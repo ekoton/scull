@@ -86,10 +86,11 @@ struct scull_qset {
 
 struct scull_dev {
 	struct scull_qset *data;  /* Pointer to first quantum set */
-	int quantum;              /* the current quantum size */
-	int qset;                 /* the current array size */
-	unsigned long size;       /* amount of data stored here */
+	int quantum;              /* the current quantum size [kods]this is set to 4000 indicating that size of a Quantum in Figure3-1 is 4000 bytes by default.*/
+	int qset;                 /* the current array size [kods]this is set to 1000 indicating that by default there can be 1000 elements in a given array which is pointed by "void **data" field in scull_qset*/ 
+	unsigned long size;       /* amount of data stored here [kods]it might be sum of all scull_qset's quantums size in byte*/
 	unsigned int access_key;  /* used by sculluid and scullpriv */
+//	struct mutex mutex;     /*[kods]since semaphore is no nonger used after 2.6.xx kernel,I try to use mutex in stead. It was wrong, semaphore is still in use in many device driver so I commented out mutex that I just added  */
 	struct semaphore sem;     /* mutual exclusion semaphore     */
 	struct cdev cdev;	  /* Char device structure		*/
 };
@@ -116,10 +117,11 @@ extern int scull_p_buffer;	/* pipe.c */
  * Prototypes for shared functions
  */
 
-int     scull_p_init(dev_t dev);
-void    scull_p_cleanup(void);
-int     scull_access_init(dev_t dev);
-void    scull_access_cleanup(void);
+//[kods]in order to avoid compile error message related to pipe.c and access.c, I comment out the following four function prototype implemented in pipe.c and access.c.
+//int     scull_p_init(dev_t dev);
+//void    scull_p_cleanup(void);
+//int     scull_access_init(dev_t dev);
+//void    scull_access_cleanup(void);
 
 int     scull_trim(struct scull_dev *dev);
 
