@@ -2,33 +2,33 @@
 
 ## Target kernel version
 
-2.6.35
+6.18.xx ~~2.6.35~~
 
 ## Current status
 
 * Can build and work
-  * simple
-  * misc-modules
-  * misc-progs
+  * ~~simple~~
+  * ~~misc-modules~~
+  * ~~misc-progs~~
   * scull
-  * scullp
-  * scullc
-  * scullv
-  * sbull
+  * ~~scullp~~
+  * ~~scullc~~
+  * ~~scullv~~
+  * ~~sbull~~
 
 * Can build but do not work
-  * lddbus
-  * sculld
+  * ~~lddbus~~
+  * ~~sculld~~
 
 * Can build but not tested yet
-  * short
-  * shortprint
+  * ~~short~~
+  * ~~shortprint~~
 
 * Can not build
-  * pci
-  * tty
-  * usb
-  * snull
+  * ~~pci~~
+  * ~~tty~~
+  * ~~usb~~
+  * ~~snull~~
 
 ## License
 
