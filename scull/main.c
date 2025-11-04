@@ -284,7 +284,7 @@ struct scull_qset *scull_follow(struct scull_dev *dev, int n)
 	struct scull_qset *qs = dev->data;
 
         /* Allocate first qset explicitly if need be */
-	if (! qs) { //[kods]if *scull_qset is not null pointer
+	if (! qs) { //[kods]if *scull_qset is null pointer
 		qs = dev->data = kmalloc(sizeof(struct scull_qset), GFP_KERNEL);
 		if (qs == NULL)
 			return NULL;  /* Never mind */
@@ -308,8 +308,10 @@ struct scull_qset *scull_follow(struct scull_dev *dev, int n)
 /*
  * Data management: read and write
  */
-ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
-                loff_t *f_pos)
+ssize_t scull_read(struct file *filp,
+        char __user *buf,
+        size_t count,
+        loff_t *f_pos)
 {
 	struct scull_dev *dev = filp->private_data; //[kods]file structure is defined in ~/git/kernels/staging/include/linux/fs.h
 	struct scull_qset *dptr;	/* the first listitem [kods]this is as in Figure3-1 in page 61*/
@@ -356,8 +358,14 @@ ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
 	return retval;
 }
 
-ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
-                loff_t *f_pos)
+/*
+ * [kods]write data into kernel space through scull device file
+ *
+ * */
+ssize_t scull_write(struct file *filp,
+        const char __user *buf, 
+        size_t count,
+        loff_t *f_pos) // [kods]f_pos is long long type and represents write starting position
 {
 	struct scull_dev *dev = filp->private_data;
 	struct scull_qset *dptr;
@@ -410,10 +418,40 @@ ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
 	return retval;
 }
 
+//[kods]although there is same function in ~/git/scull/misc-modules/faulty.c
+//[kods]it is tedious for making faulty.c to be built successfully and therefore
+//[kods]I put the function into main.c
+ssize_t faulty_write(struct file *filp,
+        const char __user *buf,
+        size_t count,
+        loff_t *pos)
+{
+   /* make a simple fault by dereferencing a NULL pointer*/
+    *(int *)0 = 0;
+    return 0;
+}
+
+ssize_t faulty_read(struct file *filp,
+        char __user *buf,
+        size_t count,
+        loff_t *f_pos)
+{
+    int ret;
+    char stack_buf[4];
+    
+    /* let's try a buffer overflow */
+    memset(stack_buf, 0xff, 20);
+    if (count> 4)
+        count = 4; /*copy 4 bytes to the user*/
+    ret = copy_to_user(buf, stack_buf, count);
+    if (!ret)
+        return count;
+    return ret;
+}
+
 /*
  * The ioctl() implementation
  */
-
 long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 
@@ -578,7 +616,9 @@ struct file_operations scull_fops = {
 	.owner =    THIS_MODULE,
 	.llseek =   scull_llseek,
 	.read =     scull_read,
+//	.read =     faulty_read, // [kods] for Oops message purpose
 	.write =    scull_write,
+//	.write =    faulty_write, // [kods] for Oops message purpose
 	.unlocked_ioctl = scull_ioctl,
 	.open =     scull_open,
 	.release =  scull_release,
