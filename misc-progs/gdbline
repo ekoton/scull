@@ -6,8 +6,8 @@
 #
 # Outputs an add-symbol-file line suitable for pasting into gdb to examine
 # a loaded module.
-# [kods] you have to become super user executing following command
-# [kods] "sudo bash ./gdbline scull ~/git/scull/scull/scull.ko"
+# [kods] the command line to execute this script is like following line.
+# [kods] "sudo ./gdbline scull ~/git/scull/scull/scull.ko"
 # [kods] $1: "scull"
 # [kods] $2: "~/git/scull/scull/scull.ko"
 #
