@@ -1,5 +1,5 @@
 #!/bin/bash
-#$1: "insmod/rmmod" for printing some info, if there is no parameter, this run as non debug mode.
+#$1: "insmod/rmmod" for executing either insmod command or rmmod command.
 #$2: "debug" for printing some info, if there is no parameter, this run as non debug mode.
 
 set -Eeuo pipefail
