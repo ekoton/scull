@@ -10,6 +10,13 @@
 # [kods] "sudo ./gdbline scull ~/git/scull/scull/scull.ko"
 # [kods] $1: "scull"
 # [kods] $2: "~/git/scull/scull/scull.ko"
+# [kods] run gdb by following command.
+# [kods] gdb ~/git/kernels/staging/vmlinux /proc/kcore
+# [kods] with gdb prompt (gdb), enter what this shell script outputed in console like below
+# [kods]add-symbol-file /home/so/git/scull/scull/scull.ko 0xffffffffc0a72000 \
+# [kods]      -s .bss 0xffffffffc09b2800 \
+# [kods]      -s .call_sites 0xffffffffc09ac3b8 \
+# [kods]      -s .data 0xffffffffc09b20c0 \
 #
 if [ "$#" -ne 2 ]; then
     echo 'specify the following value as parameters. $1: scull, $2: ~/git/scull/scull/scull.ko'
