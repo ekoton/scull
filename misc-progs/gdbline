@@ -16,6 +16,10 @@ if [ "$#" -ne 2 ]; then
 fi
 
 cd /sys/module/$1/sections
+if [ $? != 0 ]; then
+    echo "scull module is not insmoded yet!"
+    exit 1
+fi
 echo -n add-symbol-file $2 `/bin/cat .text`
 
 for section in .[a-z]* *; do
