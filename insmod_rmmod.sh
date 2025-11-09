@@ -1,6 +1,8 @@
 #!/bin/bash
 #$1: "insmod/rmmod" for executing either insmod command or rmmod command.
 #$2: "debug" for printing some info, if there is no parameter, this run as non debug mode.
+#call this function like "bash ./insmod_rmmod.sh insmod"
+#TODO "set -Eeuo ... " style seems not common shell coding style so I will change those style to the common reading-easy coding style some day.
 
 set -Eeuo pipefail
 trap 'echo "ERROR: $BASH_COMMAND exited with $?"' ERR
