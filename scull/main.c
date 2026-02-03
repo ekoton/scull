@@ -394,7 +394,7 @@ ssize_t scull_write(struct file *filp,
 		memset(dptr->data, 0, qset * sizeof(char *));
 	}
 	if (!dptr->data[s_pos]) {
-		dptr->data[s_pos] = kmalloc(quantum, GFP_KERNEL);
+		dptr->data[s_pos] = kmalloc(quantum, GFP_KERNEL); //[kods]allocating 4000 bytes for one quantum
 		if (!dptr->data[s_pos])
 			goto out;
 	}
@@ -722,7 +722,9 @@ int scull_init_module(void)
 		scull_devices[i].quantum = scull_quantum;
 		scull_devices[i].qset = scull_qset;
 		//init_MUTEX(&scull_devices[i].sem);
-		sema_init(&scull_devices[i].sem, 1);//[kods]since there is no init_MUTEX function in kernel source, I replaced it with mutex_init(&scull_devices[i].mutex) function in kernel 6.16.xx by following web site https://stackoverflow.com/questions/27801529/where-has-init-mutex-gone-in-linux-kernel-version-3-2. However it requires mutex rather than semaphore as a argument. other web site recomended to use sma_init function so I followed that one.
+
+        //[kods]since there is no init_MUTEX function in kernel source, I replaced it with mutex_init(&scull_devices[i].mutex) function in kernel 6.16.xx by following web site https://stackoverflow.com/questions/27801529/where-has-init-mutex-gone-in-linux-kernel-version-3-2. However it requires mutex rather than semaphore as a argument. other web site recomended to use sma_init function so I followed that one.
+		sema_init(&scull_devices[i].sem, 1);
 		scull_setup_cdev(&scull_devices[i], i);
 	}
 
