@@ -721,10 +721,9 @@ int scull_init_module(void)
 	for (i = 0; i < scull_nr_devs; i++) {
 		scull_devices[i].quantum = scull_quantum;
 		scull_devices[i].qset = scull_qset;
-		//init_MUTEX(&scull_devices[i].sem);
-
-        //[kods]since there is no init_MUTEX function in kernel source, I replaced it with mutex_init(&scull_devices[i].mutex) function in kernel 6.16.xx by following web site https://stackoverflow.com/questions/27801529/where-has-init-mutex-gone-in-linux-kernel-version-3-2. However it requires mutex rather than semaphore as a argument. other web site recomended to use sma_init function so I followed that one.
+        //[kods]since there is no init_MUTEX function in kernel source, I replaced it with mutex_init(&scull_devices[i].mutex) function in kernel 6.16.xx by following web site https://stackoverflow.com/questions/27801529/where-has-init-mutex-gone-in-linux-kernel-version-3-2. However it requires mutex rather than semaphore as a argument. other web site recomended to use sema_init function so I followed that advice to use sema_init.
 		sema_init(&scull_devices[i].sem, 1);
+		//init_MUTEX(&scull_devices[i].sem);
 		scull_setup_cdev(&scull_devices[i], i);
 	}
 

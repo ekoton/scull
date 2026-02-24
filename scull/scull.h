@@ -86,28 +86,21 @@ struct scull_qset {
 
 struct scull_dev {
 	struct scull_qset *data;  /* Pointer to first quantum set */
-
     // the current quantum size 
     // [kods]this is set to 4000 indicating that size of a Quantum in Figure3-1 is 4000 bytes by default.
 	int quantum;              
-
     // the current array size 
     // [kods]this indicates that by default there can be 1000 elements in a given array which is pointed by "void **data" field in scull_qset 
 	int qset;                 
-    
     // amount of data stored here 
     // [kods]it might be sum of all scull_qset's quantums size in byte
 	unsigned long size;       
-
     /* used by sculluid and scullpriv */
 	unsigned int access_key;  
-
     //[kods]since semaphore is no nonger used after 2.6.xx kernel,I try to use mutex in stead. It was wrong, semaphore is still in use in many device driver so I commented out mutex that I just added
 //	struct mutex mutex;
-
     // mutual exclusion semaphore
 	struct semaphore sem;
-
     // Char device structure
 	struct cdev cdev;
 };
